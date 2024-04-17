@@ -1,11 +1,10 @@
 import fastify from 'fastify'
-import { knex } from './database'
+import { usersRoute } from './routes/users-route'
 
 const app = fastify()
 
-app.get('/hello', async () => {
-  const users = await knex('users').select()
-  return users
+app.register(usersRoute, {
+  prefix: '/users',
 })
 
 app
