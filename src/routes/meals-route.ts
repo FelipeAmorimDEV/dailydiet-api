@@ -21,23 +21,34 @@ async function mealsRoute(app: FastifyInstance) {
       const { name, description, date, hour, onDiet } =
         meatsRequestBodySchema.parse(request.body)
 
+      const { sessionId } = request.user
+
       await knex('meals').insert({
         id: crypto.randomUUID(),
         name,
         description,
         createdAt: new Date(`${date}T${hour}`).toISOString(),
         onDiet,
+        sessionId,
       })
 
       return reply.status(201).send('')
     },
   )
 
-  app.get('/', async () => {
-    const meals = await knex('meals').select()
+  app.get(
+    '/',
+    {
+      preHandler: [cookiesValidation],
+    },
+    async (request) => {
+      const { sessionId } = request.user
 
-    return { meals }
-  })
+      const meals = await knex('meals').where('sessionId', sessionId)
+
+      return { meals }
+    },
+  )
 }
 
 export { mealsRoute }

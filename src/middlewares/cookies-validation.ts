@@ -3,7 +3,6 @@ import { knex } from '../database'
 
 async function cookiesValidation(request: FastifyRequest, reply: FastifyReply) {
   const { sessionID } = request.cookies
-
   if (!sessionID) {
     return reply.status(401).send({ error: 'Unauthorized' })
   }
