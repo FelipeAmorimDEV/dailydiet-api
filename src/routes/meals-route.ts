@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { knex } from '../database'
-import { z } from 'zod'
+import { string, z } from 'zod'
 import { cookiesValidation } from '../middlewares/cookies-validation'
 
 async function mealsRoute(app: FastifyInstance) {
@@ -43,10 +43,27 @@ async function mealsRoute(app: FastifyInstance) {
     },
     async (request) => {
       const { sessionId } = request.user
-
       const meals = await knex('meals').where('sessionId', sessionId)
 
       return { meals }
+    },
+  )
+
+  app.get(
+    '/:id',
+    {
+      preHandler: [cookiesValidation],
+    },
+    async (request) => {
+      const requestParamsSchema = z.object({
+        id: z.string().uuid(),
+      })
+      const { sessionId } = request.user
+      const { id } = requestParamsSchema.parse(request.params)
+
+      const meal = await knex('meals').where({ sessionId, id }).first()
+
+      return { meal }
     },
   )
 }
