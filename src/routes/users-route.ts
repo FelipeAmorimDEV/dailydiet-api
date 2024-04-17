@@ -10,10 +10,18 @@ async function usersRoute(app: FastifyInstance) {
     })
 
     const { name, email } = userRequestBodySchema.parse(request.body)
+    const sessionId = crypto.randomUUID()
 
     await knex('users').insert({
+      id: crypto.randomUUID(),
       name,
       email,
+      sessionId,
+    })
+
+    replay.setCookie('sessionID', sessionId, {
+      path: '/',
+      maxAge: 60 * 60 * 7, // 7 days
     })
 
     return replay.status(201).send()
