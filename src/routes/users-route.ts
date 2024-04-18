@@ -32,12 +32,6 @@ async function usersRoute(app: FastifyInstance) {
 
     return replay.status(201).send()
   })
-
-  app.get('/', async () => {
-    const users = await knex('users').select()
-
-    return { users }
-  })
 }
 
 export { usersRoute }
