@@ -11,18 +11,15 @@ async function mealsRoute(app: FastifyInstance) {
       preHandler: [cookiesValidation],
     },
     async (request, reply) => {
-      const meatsRequestBodySchema = z.object({
+      const { sessionId } = request.user
+      const mealSchema = z.object({
         name: z.string(),
         description: z.string(),
         date: z.string(),
         hour: z.string(),
         onDiet: z.enum(['yes', 'no']),
       })
-
-      const { name, description, date, hour, onDiet } =
-        meatsRequestBodySchema.parse(request.body)
-
-      const { sessionId } = request.user
+      const { name, description, date, hour, onDiet } = mealSchema.parse(request.body)
 
       await knex('meals').insert({
         id: crypto.randomUUID(),
@@ -36,6 +33,7 @@ async function mealsRoute(app: FastifyInstance) {
       return reply.status(201).send('')
     },
   )
+
   // Obter refeições
   app.get(
     '/',
@@ -44,33 +42,33 @@ async function mealsRoute(app: FastifyInstance) {
     },
     async (request) => {
       const { sessionId } = request.user
-      const meals = await knex('meals').where('sessionId', sessionId)
+      const userMeals = await knex('meals').where('sessionId', sessionId)
 
-      return { meals }
+      return { meals: userMeals }
     },
   )
-  // Obter refeição
+
+  // Obter refeição por ID
   app.get(
     '/:id',
     {
       preHandler: [cookiesValidation],
     },
     async (request, reply) => {
-      const requestParamsSchema = z.object({
-        id: z.string().uuid(),
-      })
       const { sessionId } = request.user
+      const idSchema = z.object({ id: z.string().uuid() })
+      const { id } = idSchema.parse(request.params)
 
-      const { id } = requestParamsSchema.parse(request.params)
       const meal = await knex('meals').where('id', id).first()
 
       if (meal?.sessionId !== sessionId) {
-        return reply.status(401).send({ error: 'Unouthorized' })
+        return reply.status(401).send({ error: 'Unauthorized' })
       }
 
       return { meal }
     },
   )
+
   // Deletar refeição
   app.delete(
     '/:id',
@@ -78,17 +76,15 @@ async function mealsRoute(app: FastifyInstance) {
       preHandler: [cookiesValidation],
     },
     async (request, reply) => {
-      const requestParamsSchema = z.object({
-        id: z.string().uuid(),
-      })
-
       const { sessionId } = request.user
-      const { id } = requestParamsSchema.parse(request.params)
-      const meal = await knex('meals').where('id', id).first()
-      const isAnAuthorizedUser = meal?.sessionId === sessionId
+      const idSchema = z.object({ id: z.string().uuid() })
+      const { id } = idSchema.parse(request.params)
 
-      if (!isAnAuthorizedUser) {
-        return reply.status(401).send({ error: 'Unouthorized' })
+      const meal = await knex('meals').where('id', id).first()
+      const isAuthorizedUser = meal?.sessionId === sessionId
+
+      if (!isAuthorizedUser) {
+        return reply.status(401).send({ error: 'Unauthorized' })
       }
 
       await knex('meals').where('id', id).del()
@@ -96,6 +92,7 @@ async function mealsRoute(app: FastifyInstance) {
       return reply.status(200).send()
     },
   )
+
   // Atualizar refeição
   app.put(
     '/:id',
@@ -103,28 +100,25 @@ async function mealsRoute(app: FastifyInstance) {
       preHandler: [cookiesValidation],
     },
     async (request, reply) => {
-      const requestParamsSchema = z.object({
-        id: string().uuid(),
-      })
-
-      const { id } = requestParamsSchema.parse(request.params)
       const { sessionId } = request.user
-      const meal = await knex('meals').where('id', id).first()
-      const isAnAuthorizedUser = meal?.sessionId === sessionId
+      const idSchema = z.object({ id: string().uuid() })
+      const { id } = idSchema.parse(request.params)
 
-      if (!isAnAuthorizedUser) {
-        return reply.status(401).send({ error: 'Unouthorized' })
+      const meal = await knex('meals').where('id', id).first()
+      const isAuthorizedUser = meal?.sessionId === sessionId
+
+      if (!isAuthorizedUser) {
+        return reply.status(401).send({ error: 'Unauthorized' })
       }
 
-      const mealRequestBodySchema = z.object({
+      const updatedMealSchema = z.object({
         name: z.string(),
         description: z.string(),
         date: z.string(),
         hour: z.string(),
         onDiet: z.enum(['yes', 'no']),
       })
-      const { name, description, date, hour, onDiet } =
-        mealRequestBodySchema.parse(request.body)
+      const { name, description, date, hour, onDiet } = updatedMealSchema.parse(request.body)
 
       await knex('meals')
         .where('id', id)
@@ -139,7 +133,7 @@ async function mealsRoute(app: FastifyInstance) {
     },
   )
 
-  // Obter sumário
+  // Obter sumário das refeições
   app.get(
     '/summary',
     {
@@ -149,29 +143,30 @@ async function mealsRoute(app: FastifyInstance) {
       const { sessionId } = request.user
 
       const meals = await knex('meals').where('sessionId', sessionId)
-      const { onDiet, outDiet } = meals.reduce((acc, item) => {
-        if (item.onDiet === 'yes') {
-          acc.onDiet++
+
+      const { onDietCount, outDietCount } = meals.reduce((acc, meal) => {
+        if (meal.onDiet === 'yes') {
+          acc.onDietCount++
         } else {
-          acc.outDiet++
+          acc.outDietCount++
         }
         return acc
       },
-        { onDiet: 0, outDiet: 0 }
+        { onDietCount: 0, outDietCount: 0 }
       )
-      const { bestMealSequence } = meals.reduce((acc, meal) => {
-        const currentMealSequence = meal.onDiet === 'yes' ? acc.currentMealSequence + 1 : 0
-        const newBestSequence = Math.max(currentMealSequence, acc.bestMealSequence)
+      const { maxDietarySequence } = meals.reduce((acc, meal) => {
+        const currentDietarySequence = meal.onDiet === 'yes' ? acc.currentDietarySequence + 1 : 0
+        const newMaxDietarySequence = Math.max(currentDietarySequence, acc.maxDietarySequence)
 
-        acc.bestMealSequence = newBestSequence
-        acc.currentMealSequence = currentMealSequence
+        acc.maxDietarySequence = newMaxDietarySequence
+        acc.currentDietarySequence = currentDietarySequence
 
         return acc
       },
-        { bestMealSequence: 0, currentMealSequence: 0 }
+        { maxDietarySequence: 0, currentDietarySequence: 0 }
       )
 
-      return { totalMeals: meals.length, onDiet, outDiet, bestMealSequence }
+      return { totalMeals: meals.length, onDietCount, outDietCount, maxDietarySequence }
     }
   )
 }
