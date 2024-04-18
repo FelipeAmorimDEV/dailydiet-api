@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { knex } from '../database'
-import { string, z } from 'zod'
+import { z } from 'zod'
 import { cookiesValidation } from '../middlewares/cookies-validation'
 
 async function mealsRoute(app: FastifyInstance) {

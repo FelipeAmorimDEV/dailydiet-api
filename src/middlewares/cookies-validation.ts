@@ -8,6 +8,9 @@ async function cookiesValidation(request: FastifyRequest, reply: FastifyReply) {
   }
 
   const user = await knex('users').where('sessionId', sessionID).first()
+  if (!user) {
+    return reply.status(401).send({ error: 'Unauthorized' })
+  }
 
   request.user = user
 }
