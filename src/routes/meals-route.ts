@@ -54,14 +54,18 @@ async function mealsRoute(app: FastifyInstance) {
     {
       preHandler: [cookiesValidation],
     },
-    async (request) => {
+    async (request, reply) => {
       const requestParamsSchema = z.object({
         id: z.string().uuid(),
       })
       const { sessionId } = request.user
-      const { id } = requestParamsSchema.parse(request.params)
 
-      const meal = await knex('meals').where({ sessionId, id }).first()
+      const { id } = requestParamsSchema.parse(request.params)
+      const meal = await knex('meals').where('id', id).first()
+
+      if (meal?.sessionId !== sessionId) {
+        return reply.status(401).send({ error: 'Unouthorized' })
+      }
 
       return { meal }
     },

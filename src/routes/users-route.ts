@@ -12,6 +12,12 @@ async function usersRoute(app: FastifyInstance) {
     const { name, email } = userRequestBodySchema.parse(request.body)
     const sessionId = crypto.randomUUID()
 
+    const isExistentEmail = await knex('users').where('email', email)
+
+    if (isExistentEmail.length > 0) {
+      return replay.status(409).send({ error: 'email already exists' })
+    }
+
     await knex('users').insert({
       id: crypto.randomUUID(),
       name,
