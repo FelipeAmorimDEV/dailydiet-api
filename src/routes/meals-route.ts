@@ -4,6 +4,7 @@ import { string, z } from 'zod'
 import { cookiesValidation } from '../middlewares/cookies-validation'
 
 async function mealsRoute(app: FastifyInstance) {
+  // Criar refeição
   app.post(
     '/',
     {
@@ -35,7 +36,7 @@ async function mealsRoute(app: FastifyInstance) {
       return reply.status(201).send('')
     },
   )
-
+  // Obter refeições
   app.get(
     '/',
     {
@@ -48,7 +49,7 @@ async function mealsRoute(app: FastifyInstance) {
       return { meals }
     },
   )
-
+  // Obter refeição
   app.get(
     '/:id',
     {
@@ -70,7 +71,7 @@ async function mealsRoute(app: FastifyInstance) {
       return { meal }
     },
   )
-
+  // Deletar refeição
   app.delete(
     '/:id',
     {
@@ -95,7 +96,7 @@ async function mealsRoute(app: FastifyInstance) {
       return reply.status(200).send()
     },
   )
-
+  // Atualizar refeição
   app.put(
     '/:id',
     {
@@ -135,6 +136,28 @@ async function mealsRoute(app: FastifyInstance) {
         })
 
       return reply.status(200).send()
+    },
+  )
+
+  // Obter sumário
+  app.get(
+    '/summary',
+    {
+      preHandler: [cookiesValidation],
+    },
+    async (request) => {
+      const { sessionId } = request.user
+
+      const meals = await knex('meals').where('sessionId', sessionId)
+      const { onDiet, outDiet } = meals.reduce(
+        (acc, item) =>
+          item.onDiet === 'yes'
+            ? { ...acc, onDiet: acc.onDiet + 1 }
+            : { ...acc, outDiet: acc.outDiet + 1 },
+        { onDiet: 0, outDiet: 0 },
+      )
+
+      return { totalMeals: meals.length, onDiet, outDiet }
     },
   )
 }
