@@ -5,7 +5,6 @@ import request from 'supertest'
 import { app } from '../src/app'
 
 
-
 describe('User route', () => {
   beforeEach(() => {
     execSync('npm run knex migrate:rollback --all')
@@ -42,6 +41,6 @@ describe('User route', () => {
       .send({
         name: 'felipe amorim',
         email: 'felipe@gmail.comm'
-      }).expect(201)
+      }).expect(409)
   })
 })
